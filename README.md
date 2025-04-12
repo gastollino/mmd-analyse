@@ -111,13 +111,5 @@ flowchart TB
 SagaStep1 --> Retry --> Timeout --> CBreaker --> DLQ
 
 
-%% This system uses a modular, event-driven microservice architecture
-%% It supports auth, automation, logging, monitoring, and is built for future scaling
-%% Optional components are clearly marked and isolated
-
-AI Architecture Review
-
-If you are using CodeRabbit, you can enable architectural feedback by placing this in the .mmd file:
-
 # Please analyze this architecture and suggest technical improvements
 
