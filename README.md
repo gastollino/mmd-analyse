@@ -7,40 +7,42 @@ Architecture Overview (Mermaid)
 
 ```mermaid
 
+
 flowchart TB
 
-%% ========= FRONTEND UI =========
-subgraph Frontend_Web_UI [Frontend Web UI]
-    A2[Komponente A2]
-    A1[Komponente A1]
-    Login[Komponente Login]
-    Dashboard[Komponente Dashboard]
+%% FRONTEND UI
+subgraph Frontend_UI
+    A2[Component A2]
+    A1[Component A1]
+    Login[Login Page]
+    Dashboard[Dashboard]
 end
 
-A2 -->|sendet Anfrage| Gateway
-A1 -->|sendet Anfrage| Gateway
-Login -->|sendet Anfrage| Gateway
-Dashboard -->|sendet Anfrage| Gateway
+A2 --> Gateway
+A1 --> Gateway
+Login --> Gateway
+Dashboard --> Gateway
 
-%% ========= API GATEWAY =========
-Gateway[API Gateway<br>Auth, Routing, Monitoring<br>+ (optional: Rate Limiting, Service Discovery)]
+%% API GATEWAY
+Gateway[API Gateway - Routing & Auth]
 
-%% ========= SECURITY =========
+%% SECURITY
 subgraph Security
-    AuthN[Authentication Layer<br>+ Token Refresh]
-    AuthZ[Authorization Layer<br>+ Role/Claim Checks]
-    OAuth[OAuth2 / OpenID Connect<br>(optional bei externen APIs)]
+    AuthN[Authentication]
+    AuthZ[Authorization]
+    OAuth[OAuth2 Connect (optional)]
 end
+
 Gateway --> AuthN --> AuthZ
 AuthN --> OAuth
 
-%% ========= MICROSERVICES =========
+%% MICROSERVICES
 subgraph Microservices
-    S1[Service liest/schreibt DB1]
-    S2[Service liest/schreibt DB2]
-    S3[Service sendet Event]
-    S4[Service loggt Daten / sendet Event]
-    S5[Service unten erklärt → siehe Service5Logic]
+    S1[Service 1 (DB1)]
+    S2[Service 2 (DB2)]
+    S3[Event Sender]
+    S4[Logger]
+    S5[Exec Service]
 end
 
 Gateway --> S1
@@ -52,63 +54,66 @@ S2 --> DB2
 S3 --> DB3
 S4 --> DBLogs
 
-%% ========= SERVICE 5 DETAIL =========
-subgraph Service5Logic [Service 5: Exec Unit]
-    L1[Event Listener: hört auf DokumentGeprueft]
-    L2[Validiert Daten lokal]
-    L3[Fuehrt Aktion aus – z.B. Versand starten]
-    L4[Bei Fehler: sendet Event AktionFehlgeschlagen]
+%% SERVICE 5
+subgraph ExecLogic
+    L1[Event Listener]
+    L2[Validation Step]
+    L3[Execute Action]
+    L4[Send Error Event]
 end
+
 EventBus --> L1
 L1 --> L2 --> L3 --> L4
 L3 --> LogService
 L4 --> DLQ
 
-%% ========= DATENBANKEN =========
-subgraph Datenbanken
-    DB1[(DB 1)]
-    DB2[(DB 2)]
-    DB3[(DB 3)]
-    DBLogs[(DB Logs)]
-    AuditDB[(optional: Audit Trail DB – DSGVO-konform)]
-    ReadReplicas[(optional: Read Replicas / CQRS)]
+%% DATABASES
+subgraph Databases
+    DB1[(DB1)]
+    DB2[(DB2)]
+    DB3[(DB3)]
+    DBLogs[(Log DB)]
+    AuditDB[(Audit DB optional)]
+    ReadReplicas[(Read DB optional)]
 end
+
 S3 --> AuditDB
 S2 --> ReadReplicas
 
-%% ========= AUTOMATISIERUNG =========
-subgraph Automatisierung
+%% AUTOMATION
+subgraph Automation
     EventBus[Event Bus]
     Workflow[Workflow Engine]
-    EventStore[(optional: Event Store + Replay Support)]
-    SchemaReg[(optional: Schema Registry für Events)]
+    EventStore[(Event Store optional)]
+    SchemaReg[(Schema Registry optional)]
 end
 
-EventBus -->|triggert| Workflow
+EventBus --> Workflow
 DBLogs --> EventBus
 S3 --> EventStore
 S4 --> EventStore
 S3 --> SchemaReg
 S4 --> SchemaReg
 
-%% ========= SAGA PATTERN =========
-subgraph SagaPattern [Saga Muster Coordinator]
-    SagaStart[Start Saga (z.B. Bestellung)]
-    SagaStep1[1: Zahlung verarbeiten]
-    SagaStep2[2: Versand starten]
-    SagaFail[Kompensationslogik bei Fehler]
+%% SAGA PATTERN
+subgraph Saga
+    SagaStart[Saga Start]
+    SagaStep1[Step 1 - Payment]
+    SagaStep2[Step 2 - Shipping]
+    SagaFail[Compensation Step]
 end
 
 SagaStart --> SagaStep1 --> SagaStep2
-SagaStep1 -->|Fehler| SagaFail
+SagaStep1 -->|Fail| SagaFail
 
-%% ========= MONITORING =========
+%% MONITORING
 subgraph Monitoring
-    LogService[Logging Service (z.B. ELK)]
-    Alerts[Alerting (z.B. Prometheus)]
-    Tracing[(optional: Distributed Tracing – z.B. Jaeger)]
-    Health[Service Health Checks + Heartbeat]
+    LogService[Log Service]
+    Alerts[Alert System]
+    Tracing[Tracing (optional)]
+    Health[Health Check]
 end
+
 S3 --> LogService
 S4 --> LogService
 SagaStep1 --> LogService
@@ -119,25 +124,26 @@ S2 --> Tracing
 S3 --> Tracing
 S4 --> Tracing
 Tracing --> Alerts
-AllServices((All Microservices)) --> Health
+AllServices((All Services)) --> Health
 
-%% ========= FEHLERBEHANDLUNG =========
-subgraph Fehlerbehandlung
-    Retry[Retry Mechanismus]
-    Timeout[Timeout Logik]
+%% ERROR HANDLING
+subgraph Errors
+    Retry[Retry]
+    Timeout[Timeout]
     CBreaker[Circuit Breaker]
     DLQ[Dead Letter Queue]
 end
+
 SagaStep1 --> Retry --> Timeout --> CBreaker --> DLQ
 
-%% ========= CI/CD & TESTING =========
-subgraph CI_CD [CI/CD + Testing (optional bei größerem Team)]
-    Pipeline[Build & Test Pipeline]
-    Staging[Staging Environment]
-    BlueGreen[Blue/Green or Canary Deployment (optional)]
+%% CI/CD
+subgraph CICD
+    Pipeline[Test & Build]
+    Staging[Staging]
+    BlueGreen[Blue/Green Deploy]
 end
-Pipeline --> Staging --> BlueGreen
 
+Pipeline --> Staging --> BlueGreen
 
 Description
 
