@@ -9,12 +9,12 @@ Architecture Overview (Mermaid)
 
 
 flowchart TB
-    %% FRONTEND UI
-    subgraph Frontend_Web_UI["Frontend Web UI"]
-        A2["Komponente A2"]
-        A1["Komponente A1"]
-        Login["Komponente Login"]
-        Dashboard["Komponente Dashboard"]
+    %% ========= FRONTEND UI =========
+    subgraph Frontend_Web_UI[Frontend Web UI]
+        A2[Komponente A2]
+        A1[Komponente A1]
+        Login[Komponente Login]
+        Dashboard[Komponente Dashboard]
     end
 
     A2 --> Gateway
@@ -22,85 +22,93 @@ flowchart TB
     Login --> Gateway
     Dashboard --> Gateway
 
-    %% API GATEWAY
-    Gateway["API Gateway\nAuth, Routing, Monitoring"]
+    %% ========= GATEWAY =========
+    Gateway[API Gateway\nAuth, Routing, Monitoring]
 
-    %% SECURITY
+    %% ========= SECURITY =========
     subgraph Security
-        AuthN["Authentication Layer"]
-        AuthZ["Authorization Layer"]
+        AuthN[Authentication Layer]
+        AuthZ[Authorization Layer]
     end
     Gateway --> AuthN --> AuthZ
 
-    %% MICROSERVICES
+    %% ========= MICROSERVICES =========
     subgraph Microservices
-        S1["Service 1"]
-        S2["Service 2"]
-        S3["Service 3"]
-        S4["Service 4"]
-        S5["Service 5"]
+        S1[Service liest/schreibt DB1]
+        S2[Service liest/schreibt DB2]
+        S3[Service sendet Event]
+        S4[Service loggt Daten / sendet Event]
+        S5[Service unten erklärt - siehe Service5Logic]
     end
 
     Gateway --> S1
     Gateway --> S2
     Gateway --> S3
     Gateway --> S4
-
-    %% DATABASES
-    subgraph Datenbanken
-        DB1[("DB 1")]
-        DB2[("DB 2")]
-        DB3[("DB 3")]
-        DBLogs[("DB Logs")]
-    end
-
     S1 --> DB1
     S2 --> DB2
     S3 --> DB3
     S4 --> DBLogs
 
-    %% EVENT SYSTEM
-    subgraph Automatisierung
-        EventBus["Event Bus"]
-        Workflow["Workflow Engine"]
+    %% ========= SERVICE 5 DETAIL =========
+    subgraph Service5Logic[Service 5: Exec Unit]
+        L1[Event Listener: hört auf DokumentGeprueft]
+        L2[Validiert Daten lokal]
+        L3[Fuehrt Aktion aus - z.B. Versand starten]
+        L4[Bei Fehler: sendet Event AktionFehlgeschlagen]
+    end
+    EventBus --> L1
+    L1 --> L2 --> L3 --> L4
+    L3 --> LogService
+    L4 --> DLQ
+
+    %% ========= DATENBANKEN =========
+    subgraph Datenbanken
+        DB1[(DB 1)]
+        DB2[(DB 2)]
+        DB3[(DB 3)]
+        DBLogs[(DB Logs)]
     end
 
-    S3 --> EventBus
-    S4 --> EventBus
+    %% ========= AUTOMATISIERUNG =========
+    subgraph Automatisierung
+        EventBus[Event Bus]
+        Workflow[Workflow Engine]
+    end
+
     EventBus --> Workflow
     DBLogs --> EventBus
 
-    %% SAGA PATTERN
-    subgraph SagaPattern["Saga Coordinator"]
-        SagaStart["Start Saga"]
-        Step1["Step 1"]
-        Step2["Step 2"]
-        Kompensation["Kompensation"]
+    %% ========= SAGA PATTERN =========
+    subgraph SagaPattern[Saga Muster Coordinator]
+        SagaStart[Start Saga (z.B. Bestellung)]
+        SagaStep1[1: Zahlung verarbeiten]
+        SagaStep2[2: Versand starten]
+        SagaFail[Kompensationslogik bei Fehler]
     end
 
-    SagaStart --> Step1 --> Step2
-    Step1 --> Kompensation
+    SagaStart --> SagaStep1 --> SagaStep2
+    SagaStep1 --> SagaFail
 
-    %% MONITORING
+    %% ========= MONITORING =========
     subgraph Monitoring
-        LogService["Logging Service"]
-        AlertSystem["Alert System"]
+        LogService[Logging Service (z.B. ELK)]
+        Alerts[Alerting (z.B. Prometheus)]
     end
-
     S3 --> LogService
     S4 --> LogService
-    LogService --> AlertSystem
+    SagaStep1 --> LogService
+    SagaStep2 --> LogService
+    LogService --> Alerts
 
-    %% ERROR HANDLING
+    %% ========= FEHLERBEHANDLUNG =========
     subgraph Fehlerbehandlung
-        Retry["Retry"]
-        Timeout["Timeout"]
-        CBreaker["Circuit Breaker"]
-        DLQ["Dead Letter Queue"]
+        Retry[Retry Mechanismus]
+        Timeout[Timeout Logik]
+        CBreaker[Circuit Breaker]
+        DLQ[Dead Letter Queue]
     end
-
-    Step1 --> Retry --> Timeout --> CBreaker --> DLQ
-
+    SagaStep1 --> Retry --> Timeout --> CBreaker --> DLQ
 Description
 
 This system uses a modular, event-driven microservice architecture.
