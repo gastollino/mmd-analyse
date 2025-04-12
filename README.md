@@ -7,8 +7,6 @@ Architecture Overview (Mermaid)
 
 ```mermaid
 
-
-```mermaid
 flowchart TB
 
 %% ========= FRONTEND UI =========
