@@ -81,7 +81,7 @@ flowchart TB
 
     %% ========= SAGA PATTERN =========
     subgraph SagaPattern[Saga Muster Coordinator]
-        SagaStart[Start Saga (z.B. Bestellung)]
+        SagaStart["Start Saga (z.B. Bestellung)"]
         SagaStep1[1: Zahlung verarbeiten]
         SagaStep2[2: Versand starten]
         SagaFail[Kompensationslogik bei Fehler]
