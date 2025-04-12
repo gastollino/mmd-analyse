@@ -1,81 +1,154 @@
-# mmd-analyse
-the architecture design
-
-content = """
-README.md – GitHub Template for AiCUnet Architecture
-
------------------------------
-🧠 Architecture Overview (Mermaid)
------------------------------
-
-```mermaid
-[Insert your complete Mermaid diagram code here.]
-```
-
-✅ This will render your architecture diagram directly in the README.
-
------------------------------
-🤖 Option 2: Ask AI to Analyze Your Diagram
------------------------------
-
-If you're using GitHub Copilot or CodeRabbit:
-
-Simply add a comment to your `.mmd` file:
-
-# Please analyze this architecture and suggest technical improvements
-
-These tools will start giving smart suggestions based on your Mermaid diagram.
-
------------------------------
-📝 Architecture Summary
------------------------------
-
-This system is built in a modular, event-driven architecture.  
-It includes authentication, logging, monitoring, and is prepared for future scaling.  
-All optional features are clearly marked and can be activated if needed.
-
------------------------------
-📦 Suggested Full README Layout
------------------------------
-
-# AiCUnet
-
-Modern Modular Architecture for HR, Mobility & Process Automation
-
-## 🚀 Tech Stack
-
-- Node.js / .NET Core Microservices
-- PostgreSQL per Service
-- RabbitMQ / NATS (Event Bus)
-- Event-Driven Saga Pattern
-- CI/CD Ready (GitHub Actions, optional)
-- OAuth2, JWT, Tracing (optional extensions)
-
-## 📐 System Architecture
-
-See diagram above ↑ (Mermaid)
-
-## 🔐 Roles & Access Control
-
-Role-based permissions with RBAC model.  
-Admin / Manager / Assignee / HR – each with scoped visibility and actions.
-
-## 🧪 Testing & Monitoring
-
-- Unit + Integration Tests
-- Logging (ELK)
-- Health Checks
-- Retry, Timeout, DLQ
-
-## ⚙️ Optional for Scaling
-
-- Read Replicas
-- Schema Registry
-- Event Replay
-- Canary Deployments
-
+AiCUnet Architektur
 
 ![CodeRabbit Pull Request Reviews](https://img.shields.io/coderabbit/prs/github/gastollino/mmd-analyse?utm_source=oss&utm_medium=github&utm_campaign=gastollino%2Fmmd-analyse&labelColor=171717&color=FF570A&link=https%3A%2F%2Fcoderabbit.ai&label=CodeRabbit+Reviews)
 
-This template helps you stay clean, technical and ready for collaboration or funding.
-"""
+
+Architecture Overview (Mermaid)
+
+```mermaid
+flowchart TB
+
+%% ========= FRONTEND UI =========
+subgraph Frontend_Web_UI [Frontend Web UI]
+    A2[Komponente A2]
+    A1[Komponente A1]
+    Login[Komponente Login]
+    Dashboard[Komponente Dashboard]
+end
+
+A2 -->|sendet Anfrage| Gateway
+A1 -->|sendet Anfrage| Gateway
+Login -->|sendet Anfrage| Gateway
+Dashboard -->|sendet Anfrage| Gateway
+
+%% ========= API GATEWAY =========
+Gateway[API Gateway\nAuth, Routing, Monitoring\n+ (optional: Rate Limiting, Service Discovery)]
+
+%% ========= SECURITY =========
+subgraph Security
+    AuthN[Authentication Layer\n+ Token Refresh]
+    AuthZ[Authorization Layer\n+ Role/Claim Checks]
+    OAuth[OAuth2 / OpenID Connect\n(optional bei externen APIs)]
+end
+Gateway --> AuthN --> AuthZ
+AuthN --> OAuth
+
+%% ========= MICROSERVICES =========
+subgraph Microservices
+    S1[Service liest/schreibt DB1]
+    S2[Service liest/schreibt DB2]
+    S3[Service sendet Event]
+    S4[Service loggt Daten / sendet Event]
+    S5[Service unten erklärt → siehe Service5Logic]
+end
+
+Gateway --> S1
+Gateway --> S2
+Gateway --> S3
+Gateway --> S4
+S1 --> DB1
+S2 --> DB2
+S3 --> DB3
+S4 --> DBLogs
+
+%% ========= SERVICE 5 DETAIL =========
+subgraph Service5Logic [Service 5: Exec Unit]
+    L1[Event Listener: hört auf DokumentGeprueft]
+    L2[Validiert Daten lokal]
+    L3[Fuehrt Aktion aus – z.B. Versand starten]
+    L4[Bei Fehler: sendet Event AktionFehlgeschlagen]
+end
+EventBus --> L1
+L1 --> L2 --> L3 --> L4
+L3 --> LogService
+L4 --> DLQ
+
+%% ========= DATENBANKEN =========
+subgraph Datenbanken
+    DB1[(DB 1)]
+    DB2[(DB 2)]
+    DB3[(DB 3)]
+    DBLogs[(DB Logs)]
+    AuditDB[(optional: Audit Trail DB – DSGVO-konform)]
+    ReadReplicas[(optional: Read Replicas / CQRS)]
+end
+S3 --> AuditDB
+S2 --> ReadReplicas
+
+%% ========= AUTOMATISIERUNG =========
+subgraph Automatisierung
+    EventBus[Event Bus]
+    Workflow[Workflow Engine]
+    EventStore[(optional: Event Store + Replay Support)]
+    SchemaReg[(optional: Schema Registry für Events)]
+end
+
+EventBus -->|triggert| Workflow
+DBLogs --> EventBus
+S3 --> EventStore
+S4 --> EventStore
+S3 --> SchemaReg
+S4 --> SchemaReg
+
+%% ========= SAGA PATTERN =========
+subgraph SagaPattern [Saga Muster Coordinator]
+    SagaStart[Start Saga (z.B. Bestellung)]
+    SagaStep1[1: Zahlung verarbeiten]
+    SagaStep2[2: Versand starten]
+    SagaFail[Kompensationslogik bei Fehler]
+end
+
+SagaStart --> SagaStep1 --> SagaStep2
+SagaStep1 -->|Fehler| SagaFail
+
+%% ========= MONITORING =========
+subgraph Monitoring
+    LogService[Logging Service (z.B. ELK)]
+    Alerts[Alerting (z.B. Prometheus)]
+    Tracing[(optional: Distributed Tracing – z.B. Jaeger)]
+    Health[Service Health Checks + Heartbeat]
+end
+S3 --> LogService
+S4 --> LogService
+SagaStep1 --> LogService
+SagaStep2 --> LogService
+LogService --> Alerts
+S1 --> Tracing
+S2 --> Tracing
+S3 --> Tracing
+S4 --> Tracing
+Tracing --> Alerts
+AllServices((All Microservices)) --> Health
+
+%% ========= FEHLERBEHANDLUNG =========
+subgraph Fehlerbehandlung
+    Retry[Retry Mechanismus]
+    Timeout[Timeout Logik]
+    CBreaker[Circuit Breaker]
+    DLQ[Dead Letter Queue]
+end
+SagaStep1 --> Retry --> Timeout --> CBreaker --> DLQ
+
+%% ========= CI/CD & TESTING =========
+subgraph CI_CD [CI/CD + Testing (optional bei größerem Team)]
+    Pipeline[Build & Test Pipeline]
+    Staging[Staging Environment]
+    BlueGreen[Blue/Green or Canary Deployment (optional)]
+end
+Pipeline --> Staging --> BlueGreen
+
+
+
+Description
+
+This system uses a modular, event-driven microservice architecture.
+It supports auth, automation, logging, monitoring, and is built for future scaling.
+Optional components are clearly marked and isolated.
+
+
+AI Architecture Review
+
+If you are using CodeRabbit, you can enable architectural feedback by placing this in the .mmd file:
+
+# Please analyze this architecture and suggest technical improvements
+
