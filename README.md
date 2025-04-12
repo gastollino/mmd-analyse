@@ -8,106 +8,132 @@ Architecture Overview (Mermaid)
 ```mermaid
 
 
+```mermaid
 flowchart TB
-    %% ========= FRONTEND UI =========
-    subgraph Frontend_Web_UI[Frontend Web UI]
-        A2[Komponente A2]
-        A1[Komponente A1]
-        Login[Komponente Login]
-        Dashboard[Komponente Dashboard]
-    end
 
-    A2 --> Gateway
-    A1 --> Gateway
-    Login --> Gateway
-    Dashboard --> Gateway
+%% ========= FRONTEND UI =========
+subgraph Frontend_UI [Frontend Web UI]
+    A1[Component A1]
+    A2[Component A2]
+    Login[Login Page]
+    Dashboard[Dashboard]
+end
 
-    %% ========= GATEWAY =========
-    Gateway[API Gateway\nAuth, Routing, Monitoring]
+%% Suggestion: React + Zustand, Tailwind, Router
+A1 --> Gateway
+A2 --> Gateway
+Login --> Gateway
+Dashboard --> Gateway
 
-    %% ========= SECURITY =========
-    subgraph Security
-        AuthN[Authentication Layer]
-        AuthZ[Authorization Layer]
-    end
-    Gateway --> AuthN --> AuthZ
+%% ========= API GATEWAY =========
+%% Handles: Routing, Auth, Rate Limiting, Logging
+Gateway[API Gateway]
 
-    %% ========= MICROSERVICES =========
-    subgraph Microservices
-        S1[Service liest/schreibt DB1]
-        S2[Service liest/schreibt DB2]
-        S3[Service sendet Event]
-        S4[Service loggt Daten / sendet Event]
-        S5[Service unten erklärt - siehe Service5Logic]
-    end
+%% ========= SECURITY =========
+subgraph Security
+    AuthN["Authentication (JWT)"]
+    AuthZ["Authorization (RBAC)"]
+    OAuth["OAuth2 (optional)"]
+end
+Gateway --> AuthN --> AuthZ
+AuthN --> OAuth
 
-    Gateway --> S1
-    Gateway --> S2
-    Gateway --> S3
-    Gateway --> S4
-    S1 --> DB1
-    S2 --> DB2
-    S3 --> DB3
-    S4 --> DBLogs
+%% ========= MICROSERVICES =========
+subgraph Microservices
+    S1["Service 1: Data Handler (PostgreSQL)"]
+    S2["Service 2: Data Handler (PostgreSQL + Replica)"]
+    S3["Event Sender (Audit Log)"]
+    S4["Logger Service (to DBLogs)"]
+    S5["Exec Service (Event Driven Logic)"]
+end
+Gateway --> S1
+Gateway --> S2
+Gateway --> S3
+Gateway --> S4
+S1 --> DB1
+S2 --> DB2
+S3 --> DB3
+S4 --> DBLogs
 
-    %% ========= SERVICE 5 DETAIL =========
-    subgraph Service5Logic[Service 5: Exec Unit]
-        L1[Event Listener: hört auf DokumentGeprueft]
-        L2[Validiert Daten lokal]
-        L3[Fuehrt Aktion aus - z.B. Versand starten]
-        L4[Bei Fehler: sendet Event AktionFehlgeschlagen]
-    end
-    EventBus --> L1
-    L1 --> L2 --> L3 --> L4
-    L3 --> LogService
-    L4 --> DLQ
+%% ========= SERVICE 5 DETAIL =========
+subgraph ExecLogic
+    L1[Event Listener]
+    L2[Validate Data]
+    L3[Trigger Action]
+    L4[Send Failure Event]
+end
+EventBus --> L1 --> L2 --> L3 --> L4
+L3 --> LogService
+L4 --> DLQ
 
-    %% ========= DATENBANKEN =========
-    subgraph Datenbanken
-        DB1[(DB 1)]
-        DB2[(DB 2)]
-        DB3[(DB 3)]
-        DBLogs[(DB Logs)]
-    end
+%% ========= DATABASES =========
+subgraph Databases
+    DB1["(DB 1 - PostgreSQL)"]
+    DB2["(DB 2 - PostgreSQL + Read Replica)"]
+    DB3["(DB 3 - Audit/NoSQL optional)"]
+    DBLogs["(Log DB - SQLite or PostgreSQL)"]
+    AuditDB["(Optional Audit Trail DB)"]
+    ReadReplicas["(Optional Read Replicas)"]
+end
+S3 --> AuditDB
+S2 --> ReadReplicas
 
-    %% ========= AUTOMATISIERUNG =========
-    subgraph Automatisierung
-        EventBus[Event Bus]
-        Workflow[Workflow Engine]
-    end
+%% ========= AUTOMATION =========
+subgraph Automation
+    EventBus["Event Bus (e.g. Node/Redis)"]
+    Workflow[Internal Workflow Logic]
+    EventStore["(Optional Event Store)"]
+    SchemaReg["(Optional Schema Registry)"]
+end
+DBLogs --> EventBus
+EventBus --> Workflow
+S3 --> EventStore
+S4 --> EventStore
+S3 --> SchemaReg
+S4 --> SchemaReg
 
-    EventBus --> Workflow
-    DBLogs --> EventBus
+%% ========= SAGA COORDINATOR =========
+subgraph Saga
+    SagaStart[Saga Start]
+    SagaStep1[Step 1: Payment]
+    SagaStep2[Step 2: Shipping]
+    SagaFail[Compensate on Failure]
+end
+SagaStart --> SagaStep1 --> SagaStep2
+SagaStep1 -->|Fail| SagaFail
 
-    %% ========= SAGA PATTERN =========
-    subgraph SagaPattern[Saga Muster Coordinator]
-        SagaStart["Start Saga (z.B. Bestellung)"]
-        SagaStep1[1: Zahlung verarbeiten]
-        SagaStep2[2: Versand starten]
-        SagaFail[Kompensationslogik bei Fehler]
-    end
+%% ========= MONITORING =========
+subgraph Monitoring
+    LogService["Logging (Winston/Pino)"]
+    Alerts["Alerts (Email/Slack)"]
+    Tracing["Tracing (optional)"]
+    Health[Health Check]
+end
+S3 --> LogService
+S4 --> LogService
+SagaStep1 --> LogService
+SagaStep2 --> LogService
+LogService --> Alerts
+S1 --> Tracing
+S2 --> Tracing
+S3 --> Tracing
+S4 --> Tracing
+AllServices((All Services)) --> Health
 
-    SagaStart --> SagaStep1 --> SagaStep2
-    SagaStep1 --> SagaFail
-
-    %% ========= MONITORING =========
-    subgraph Monitoring
-        LogService["Logging Service (z.B. ELK)"]
-        Alerts["Alerting (z.B. Prometheus)"]
-    end
-    S3 --> LogService
-    S4 --> LogService
-    SagaStep1 --> LogService
-    SagaStep2 --> LogService
-    LogService --> Alerts
-
-    %% ========= FEHLERBEHANDLUNG =========
-    subgraph Fehlerbehandlung
-        Retry[Retry Mechanismus]
-        Timeout[Timeout Logik]
-        CBreaker[Circuit Breaker]
-        DLQ[Dead Letter Queue]
-    end
+%% ========= ERROR HANDLING =========
+subgraph Errors
+    Retry["Retry (custom or npm retry)"]
+    Timeout[Timeout Handling]
+    CBreaker["Circuit Breaker (opossum)"]
+    DLQ["Dead Letter Queue (internal)"]
+end
 SagaStep1 --> Retry --> Timeout --> CBreaker --> DLQ
 
-
+%% ========= CI/CD =========
+subgraph CICD
+    Pipeline[Build & Test Pipeline]
+    Staging[Staging Environment]
+    BlueGreen[Blue/Green Deployment]
+end
+Pipeline --> Staging --> BlueGreen
+```
