@@ -10,104 +10,105 @@ Architecture Overview (Mermaid)
 
 flowchart TB
     %% ========= FRONTEND UI =========
-    subgraph Frontend_Web_UI ["Frontend Web UI"]
+    subgraph Frontend_Web_UI["Frontend Web UI"]
         A2["Komponente A2"]
         A1["Komponente A1"]
         Login["Komponente Login"]
         Dashboard["Komponente Dashboard"]
     end
 
-    A2 -->|"HTTP Request"| Gateway
-    A1 -->|"GraphQL"| Gateway
-    Login -->|"Auth Request"| Gateway
-    Dashboard -->|"Data Fetch"| Gateway
+    A2 -->|sendet Anfrage| Gateway
+    A1 -->|sendet Anfrage| Gateway
+    Login -->|sendet Anfrage| Gateway
+    Dashboard -->|sendet Anfrage| Gateway
 
-    %% ========= API GATEWAY =========
-    Gateway["API Gateway\n• Authentication\n• Rate Limiting\n• Request Routing\n• Monitoring"]
+    %% ========= GATEWAY =========
+    Gateway["API Gateway\nAuth, Routing, Monitoring"]
 
-    %% ========= SECURITY LAYER =========
-    subgraph Security ["Security Layer"]
-        AuthN["Auth Service\n(JWT, OAuth2)"]
-        AuthZ["Policy Service\n(RBAC, ABAC)"]
-        Audit["Audit Logger"]
+    %% ========= SECURITY =========
+    subgraph Security
+        AuthN["Authentication Layer"]
+        AuthZ["Authorization Layer"]
     end
-    Gateway --> AuthN --> AuthZ --> Audit
+    Gateway --> AuthN --> AuthZ
 
-    %% ========= CORE MICROSERVICES =========
-    subgraph Microservices ["Business Microservices"]
-        Order["Order Service\n• Creates orders\n• Manages lifecycle"]
-        Inventory["Inventory Service\n• Stock management\n• Reservations"]
-        Payment["Payment Service\n• Processes payments\n• Refunds"]
-        Notification["Notification Service\n• Email/SMS\n• Event-driven"]
-    end
-
-    Gateway --> Order --> EventBus
-    Gateway --> Inventory
-    Gateway --> Payment
-    Notification -->|"Sends"| EmailService["Email Service"]
-    Notification -->|"Pushes"| MobileGateway["Mobile Gateway"]
-
-    %% ========= DATA STORES =========
-    subgraph Databases ["Persistence Layer"]
-        OrderDB[("Orders DB\n(PostgreSQL)")]
-        InventoryDB[("Inventory DB\n(MongoDB)")]
-        PaymentDB[("Payments DB\n(PostgreSQL)")]
-        EventStore[("Event Store\n(Kafka)")]
+    %% ========= MICROSERVICES =========
+    subgraph Microservices
+        S1["Service liest/schreibt DB1"]
+        S2["Service liest/schreibt DB2"]
+        S3["Service sendet Event"]
+        S4["Service loggt Daten / sendet Event"]
+        S5["Service unten erklärt → siehe Service5Logic"]
     end
 
-    Order --> OrderDB
-    Inventory --> InventoryDB
-    Payment --> PaymentDB
-    EventBus --> EventStore
+    Gateway --> S1
+    Gateway --> S2
+    Gateway --> S3
+    Gateway --> S4
+    S1 --> DB1
+    S2 --> DB2
+    S3 --> DB3
+    S4 --> DBLogs
 
-    %% ========= EVENT ARCHITECTURE =========
-    subgraph Event_System ["Event-Driven Architecture"]
-        EventBus["Event Bus\n(Kafka Topics)"]
-        CQRS["CQRS Processor"]
-        Saga["Saga Orchestrator"]
+    %% ========= SERVICE 5 DETAIL =========
+    subgraph Service5Logic["Service 5: Exec Unit"]
+        L1["Event Listener: hört auf DokumentGeprueft"]
+        L2["Validiert Daten lokal"]
+        L3["Fuehrt Aktion aus – z.B. Versand starten"]
+        L4["Bei Fehler: sendet Event AktionFehlgeschlagen"]
+    end
+    EventBus --> L1
+    L1 --> L2 --> L3 --> L4
+    L3 --> LogService
+    L4 --> DLQ
+
+    %% ========= DATENBANKEN =========
+    subgraph Datenbanken
+        DB1[("DB 1")]
+        DB2[("DB 2")]
+        DB3[("DB 3")]
+        DBLogs[("DB Logs")]
     end
 
-    Order -->|"Publishes"| EventBus
-    Inventory -->|"Subscribes"| EventBus
-    Payment -->|"Subscribes"| EventBus
-    EventBus --> CQRS --> ReadDB[("Read DB\n(Elasticsearch)")]
-    EventBus --> Saga
-
-    %% ========= OBSERVABILITY =========
-    subgraph Observability ["Monitoring & Tracing"]
-        Metrics["Prometheus\n+Grafana"]
-        Logging["ELK Stack"]
-        Tracing["Jaeger"]
-        Health["Health Checks"]
+    %% ========= AUTOMATISIERUNG =========
+    subgraph Automatisierung
+        EventBus["Event Bus"]
+        Workflow["Workflow Engine"]
     end
 
-    Order -->|"Metrics"| Metrics
-    Inventory -->|"Logs"| Logging
-    Payment -->|"Traces"| Tracing
-    Health -->|"Pings"| AllServices
+    EventBus -->|triggert| Workflow
+    DBLogs --> EventBus
 
-    %% ========= DEPLOYMENT =========
-    subgraph Deployment ["CI/CD Pipeline"]
-        Build["Build\n(Docker Images)"]
-        Test["Test\n(JUnit, Cypress)"]
-        Deploy["Deploy\n(Kubernetes)"]
+    %% ========= SAGA PATTERN =========
+    subgraph SagaPattern["Saga Muster Coordinator"]
+        SagaStart["Start Saga (z.B. Bestellung)"]
+        SagaStep1["1: Zahlung verarbeiten"]
+        SagaStep2["2: Versand starten"]
+        SagaFail["Kompensationslogik bei Fehler"]
     end
 
-    Build --> Test --> Deploy
+    SagaStart --> SagaStep1 --> SagaStep2
+    SagaStep1 -->|Fehler| SagaFail
 
-    %% ========= LEGEND & NOTES =========
-    classDef service fill:#e3f2fd,stroke:#64b5f6
-    classDef storage fill:#e8f5e9,stroke:#81c784
-    classDef event fill:#f3e5f5,stroke:#ba68c8
-    classDef infra fill:#fff3e0,stroke:#ffb74d
+    %% ========= MONITORING =========
+    subgraph Monitoring
+        LogService["Logging Service (z.B. ELK)"]
+        Alerts["Alerting (z.B. Prometheus)"]
+    end
+    S3 --> LogService
+    S4 --> LogService
+    SagaStep1 --> LogService
+    SagaStep2 --> LogService
+    LogService --> Alerts
 
-    class Order,Inventory,Payment,Notification service
-    class OrderDB,InventoryDB,PaymentDB,EventStore,ReadDB storage
-    class EventBus,CQRS,Saga event
-    class Observability,Deployment infra
-
-    click Gateway "https://docs.aicunet.com/api-gateway" _blank
-    click AuthN "https://docs.aicunet.com/auth" _blank
+    %% ========= FEHLERBEHANDLUNG =========
+    subgraph Fehlerbehandlung
+        Retry["Retry Mechanismus"]
+        Timeout["Timeout Logik"]
+        CBreaker["Circuit Breaker"]
+        DLQ["Dead Letter Queue"]
+    end
+    SagaStep1 --> Retry --> Timeout --> CBreaker --> DLQ
 
 Description
 
