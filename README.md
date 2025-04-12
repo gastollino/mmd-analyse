@@ -9,7 +9,7 @@ Architecture Overview (Mermaid)
 
 
 flowchart TB
-    %% ========= FRONTEND UI =========
+    %% FRONTEND UI
     subgraph Frontend_Web_UI["Frontend Web UI"]
         A2["Komponente A2"]
         A1["Komponente A1"]
@@ -17,52 +17,36 @@ flowchart TB
         Dashboard["Komponente Dashboard"]
     end
 
-    A2 -->|sendet Anfrage| Gateway
-    A1 -->|sendet Anfrage| Gateway
-    Login -->|sendet Anfrage| Gateway
-    Dashboard -->|sendet Anfrage| Gateway
+    A2 --> Gateway
+    A1 --> Gateway
+    Login --> Gateway
+    Dashboard --> Gateway
 
-    %% ========= GATEWAY =========
+    %% API GATEWAY
     Gateway["API Gateway\nAuth, Routing, Monitoring"]
 
-    %% ========= SECURITY =========
+    %% SECURITY
     subgraph Security
         AuthN["Authentication Layer"]
         AuthZ["Authorization Layer"]
     end
     Gateway --> AuthN --> AuthZ
 
-    %% ========= MICROSERVICES =========
+    %% MICROSERVICES
     subgraph Microservices
-        S1["Service liest/schreibt DB1"]
-        S2["Service liest/schreibt DB2"]
-        S3["Service sendet Event"]
-        S4["Service loggt Daten / sendet Event"]
-        S5["Service unten erklärt → siehe Service5Logic"]
+        S1["Service 1"]
+        S2["Service 2"]
+        S3["Service 3"]
+        S4["Service 4"]
+        S5["Service 5"]
     end
 
     Gateway --> S1
     Gateway --> S2
     Gateway --> S3
     Gateway --> S4
-    S1 --> DB1
-    S2 --> DB2
-    S3 --> DB3
-    S4 --> DBLogs
 
-    %% ========= SERVICE 5 DETAIL =========
-    subgraph Service5Logic["Service 5: Exec Unit"]
-        L1["Event Listener: hört auf DokumentGeprueft"]
-        L2["Validiert Daten lokal"]
-        L3["Fuehrt Aktion aus – z.B. Versand starten"]
-        L4["Bei Fehler: sendet Event AktionFehlgeschlagen"]
-    end
-    EventBus --> L1
-    L1 --> L2 --> L3 --> L4
-    L3 --> LogService
-    L4 --> DLQ
-
-    %% ========= DATENBANKEN =========
+    %% DATABASES
     subgraph Datenbanken
         DB1[("DB 1")]
         DB2[("DB 2")]
@@ -70,45 +54,52 @@ flowchart TB
         DBLogs[("DB Logs")]
     end
 
-    %% ========= AUTOMATISIERUNG =========
+    S1 --> DB1
+    S2 --> DB2
+    S3 --> DB3
+    S4 --> DBLogs
+
+    %% EVENT SYSTEM
     subgraph Automatisierung
         EventBus["Event Bus"]
         Workflow["Workflow Engine"]
     end
 
-    EventBus -->|triggert| Workflow
+    S3 --> EventBus
+    S4 --> EventBus
+    EventBus --> Workflow
     DBLogs --> EventBus
 
-    %% ========= SAGA PATTERN =========
-    subgraph SagaPattern["Saga Muster Coordinator"]
-        SagaStart["Start Saga (z.B. Bestellung)"]
-        SagaStep1["1: Zahlung verarbeiten"]
-        SagaStep2["2: Versand starten"]
-        SagaFail["Kompensationslogik bei Fehler"]
+    %% SAGA PATTERN
+    subgraph SagaPattern["Saga Coordinator"]
+        SagaStart["Start Saga"]
+        Step1["Step 1"]
+        Step2["Step 2"]
+        Kompensation["Kompensation"]
     end
 
-    SagaStart --> SagaStep1 --> SagaStep2
-    SagaStep1 -->|Fehler| SagaFail
+    SagaStart --> Step1 --> Step2
+    Step1 --> Kompensation
 
-    %% ========= MONITORING =========
+    %% MONITORING
     subgraph Monitoring
-        LogService["Logging Service (z.B. ELK)"]
-        Alerts["Alerting (z.B. Prometheus)"]
+        LogService["Logging Service"]
+        AlertSystem["Alert System"]
     end
+
     S3 --> LogService
     S4 --> LogService
-    SagaStep1 --> LogService
-    SagaStep2 --> LogService
-    LogService --> Alerts
+    LogService --> AlertSystem
 
-    %% ========= FEHLERBEHANDLUNG =========
+    %% ERROR HANDLING
     subgraph Fehlerbehandlung
-        Retry["Retry Mechanismus"]
-        Timeout["Timeout Logik"]
+        Retry["Retry"]
+        Timeout["Timeout"]
         CBreaker["Circuit Breaker"]
         DLQ["Dead Letter Queue"]
     end
-    SagaStep1 --> Retry --> Timeout --> CBreaker --> DLQ
+
+    Step1 --> Retry --> Timeout --> CBreaker --> DLQ
 
 Description
 
