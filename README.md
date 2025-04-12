@@ -74,12 +74,8 @@ Admin / Manager / Assignee / HR – each with scoped visibility and actions.
 - Event Replay
 - Canary Deployments
 
-## 👤 Contact
 
-CTO: Reza @ AiCUnet  
-(Replace with email/GitHub later)
-
----
+![CodeRabbit Pull Request Reviews](https://img.shields.io/coderabbit/prs/github/gastollino/mmd-analyse?utm_source=oss&utm_medium=github&utm_campaign=gastollino%2Fmmd-analyse&labelColor=171717&color=FF570A&link=https%3A%2F%2Fcoderabbit.ai&label=CodeRabbit+Reviews)
 
 This template helps you stay clean, technical and ready for collaboration or funding.
 """
