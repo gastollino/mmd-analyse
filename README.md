@@ -108,7 +108,7 @@ flowchart TB
         CBreaker[Circuit Breaker]
         DLQ[Dead Letter Queue]
     end
-  SagaStep1 --> Retry --> Timeout --> CBreaker --> DLQ
+SagaStep1 --> Retry --> Timeout --> CBreaker --> DLQ
 
 %% AI Architecture Review
 %% This system uses a modular, event-driven microservice architecture
