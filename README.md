@@ -9,141 +9,105 @@ Architecture Overview (Mermaid)
 
 
 flowchart TB
+    %% ========= FRONTEND UI =========
+    subgraph Frontend_Web_UI ["Frontend Web UI"]
+        A2["Komponente A2"]
+        A1["Komponente A1"]
+        Login["Komponente Login"]
+        Dashboard["Komponente Dashboard"]
+    end
 
-%% FRONTEND UI
-subgraph Frontend_UI
-    A2[Component A2]
-    A1[Component A1]
-    Login[Login Page]
-    Dashboard[Dashboard]
-end
+    A2 -->|"HTTP Request"| Gateway
+    A1 -->|"GraphQL"| Gateway
+    Login -->|"Auth Request"| Gateway
+    Dashboard -->|"Data Fetch"| Gateway
 
-A2 --> Gateway
-A1 --> Gateway
-Login --> Gateway
-Dashboard --> Gateway
+    %% ========= API GATEWAY =========
+    Gateway["API Gateway\n• Authentication\n• Rate Limiting\n• Request Routing\n• Monitoring"]
 
-%% API GATEWAY
-Gateway[API Gateway - Routing & Auth]
+    %% ========= SECURITY LAYER =========
+    subgraph Security ["Security Layer"]
+        AuthN["Auth Service\n(JWT, OAuth2)"]
+        AuthZ["Policy Service\n(RBAC, ABAC)"]
+        Audit["Audit Logger"]
+    end
+    Gateway --> AuthN --> AuthZ --> Audit
 
-%% SECURITY
-subgraph Security
-    AuthN[Authentication]
-    AuthZ[Authorization]
-    OAuth[OAuth2 Connect (optional)]
-end
+    %% ========= CORE MICROSERVICES =========
+    subgraph Microservices ["Business Microservices"]
+        Order["Order Service\n• Creates orders\n• Manages lifecycle"]
+        Inventory["Inventory Service\n• Stock management\n• Reservations"]
+        Payment["Payment Service\n• Processes payments\n• Refunds"]
+        Notification["Notification Service\n• Email/SMS\n• Event-driven"]
+    end
 
-Gateway --> AuthN --> AuthZ
-AuthN --> OAuth
+    Gateway --> Order --> EventBus
+    Gateway --> Inventory
+    Gateway --> Payment
+    Notification -->|"Sends"| EmailService["Email Service"]
+    Notification -->|"Pushes"| MobileGateway["Mobile Gateway"]
 
-%% MICROSERVICES
-subgraph Microservices
-    S1[Service 1 (DB1)]
-    S2[Service 2 (DB2)]
-    S3[Event Sender]
-    S4[Logger]
-    S5[Exec Service]
-end
+    %% ========= DATA STORES =========
+    subgraph Databases ["Persistence Layer"]
+        OrderDB[("Orders DB\n(PostgreSQL)")]
+        InventoryDB[("Inventory DB\n(MongoDB)")]
+        PaymentDB[("Payments DB\n(PostgreSQL)")]
+        EventStore[("Event Store\n(Kafka)")]
+    end
 
-Gateway --> S1
-Gateway --> S2
-Gateway --> S3
-Gateway --> S4
-S1 --> DB1
-S2 --> DB2
-S3 --> DB3
-S4 --> DBLogs
+    Order --> OrderDB
+    Inventory --> InventoryDB
+    Payment --> PaymentDB
+    EventBus --> EventStore
 
-%% SERVICE 5
-subgraph ExecLogic
-    L1[Event Listener]
-    L2[Validation Step]
-    L3[Execute Action]
-    L4[Send Error Event]
-end
+    %% ========= EVENT ARCHITECTURE =========
+    subgraph Event_System ["Event-Driven Architecture"]
+        EventBus["Event Bus\n(Kafka Topics)"]
+        CQRS["CQRS Processor"]
+        Saga["Saga Orchestrator"]
+    end
 
-EventBus --> L1
-L1 --> L2 --> L3 --> L4
-L3 --> LogService
-L4 --> DLQ
+    Order -->|"Publishes"| EventBus
+    Inventory -->|"Subscribes"| EventBus
+    Payment -->|"Subscribes"| EventBus
+    EventBus --> CQRS --> ReadDB[("Read DB\n(Elasticsearch)")]
+    EventBus --> Saga
 
-%% DATABASES
-subgraph Databases
-    DB1[(DB1)]
-    DB2[(DB2)]
-    DB3[(DB3)]
-    DBLogs[(Log DB)]
-    AuditDB[(Audit DB optional)]
-    ReadReplicas[(Read DB optional)]
-end
+    %% ========= OBSERVABILITY =========
+    subgraph Observability ["Monitoring & Tracing"]
+        Metrics["Prometheus\n+Grafana"]
+        Logging["ELK Stack"]
+        Tracing["Jaeger"]
+        Health["Health Checks"]
+    end
 
-S3 --> AuditDB
-S2 --> ReadReplicas
+    Order -->|"Metrics"| Metrics
+    Inventory -->|"Logs"| Logging
+    Payment -->|"Traces"| Tracing
+    Health -->|"Pings"| AllServices
 
-%% AUTOMATION
-subgraph Automation
-    EventBus[Event Bus]
-    Workflow[Workflow Engine]
-    EventStore[(Event Store optional)]
-    SchemaReg[(Schema Registry optional)]
-end
+    %% ========= DEPLOYMENT =========
+    subgraph Deployment ["CI/CD Pipeline"]
+        Build["Build\n(Docker Images)"]
+        Test["Test\n(JUnit, Cypress)"]
+        Deploy["Deploy\n(Kubernetes)"]
+    end
 
-EventBus --> Workflow
-DBLogs --> EventBus
-S3 --> EventStore
-S4 --> EventStore
-S3 --> SchemaReg
-S4 --> SchemaReg
+    Build --> Test --> Deploy
 
-%% SAGA PATTERN
-subgraph Saga
-    SagaStart[Saga Start]
-    SagaStep1[Step 1 - Payment]
-    SagaStep2[Step 2 - Shipping]
-    SagaFail[Compensation Step]
-end
+    %% ========= LEGEND & NOTES =========
+    classDef service fill:#e3f2fd,stroke:#64b5f6
+    classDef storage fill:#e8f5e9,stroke:#81c784
+    classDef event fill:#f3e5f5,stroke:#ba68c8
+    classDef infra fill:#fff3e0,stroke:#ffb74d
 
-SagaStart --> SagaStep1 --> SagaStep2
-SagaStep1 -->|Fail| SagaFail
+    class Order,Inventory,Payment,Notification service
+    class OrderDB,InventoryDB,PaymentDB,EventStore,ReadDB storage
+    class EventBus,CQRS,Saga event
+    class Observability,Deployment infra
 
-%% MONITORING
-subgraph Monitoring
-    LogService[Log Service]
-    Alerts[Alert System]
-    Tracing[Tracing (optional)]
-    Health[Health Check]
-end
-
-S3 --> LogService
-S4 --> LogService
-SagaStep1 --> LogService
-SagaStep2 --> LogService
-LogService --> Alerts
-S1 --> Tracing
-S2 --> Tracing
-S3 --> Tracing
-S4 --> Tracing
-Tracing --> Alerts
-AllServices((All Services)) --> Health
-
-%% ERROR HANDLING
-subgraph Errors
-    Retry[Retry]
-    Timeout[Timeout]
-    CBreaker[Circuit Breaker]
-    DLQ[Dead Letter Queue]
-end
-
-SagaStep1 --> Retry --> Timeout --> CBreaker --> DLQ
-
-%% CI/CD
-subgraph CICD
-    Pipeline[Test & Build]
-    Staging[Staging]
-    BlueGreen[Blue/Green Deploy]
-end
-
-Pipeline --> Staging --> BlueGreen
+    click Gateway "https://docs.aicunet.com/api-gateway" _blank
+    click AuthN "https://docs.aicunet.com/auth" _blank
 
 Description
 
