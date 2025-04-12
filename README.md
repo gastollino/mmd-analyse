@@ -109,7 +109,8 @@ flowchart TB
         DLQ[Dead Letter Queue]
     end
     SagaStep1 --> Retry --> Timeout --> CBreaker --> DLQ
-Description
+
+%% Description
 
 This system uses a modular, event-driven microservice architecture.
 It supports auth, automation, logging, monitoring, and is built for future scaling.
