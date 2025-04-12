@@ -6,6 +6,7 @@ AiCUnet Architektur
 Architecture Overview (Mermaid)
 
 ```mermaid
+
 flowchart TB
 
 %% ========= FRONTEND UI =========
@@ -22,13 +23,13 @@ Login -->|sendet Anfrage| Gateway
 Dashboard -->|sendet Anfrage| Gateway
 
 %% ========= API GATEWAY =========
-Gateway[API Gateway\nAuth, Routing, Monitoring\n+ (optional: Rate Limiting, Service Discovery)]
+Gateway[API Gateway<br>Auth, Routing, Monitoring<br>+ (optional: Rate Limiting, Service Discovery)]
 
 %% ========= SECURITY =========
 subgraph Security
-    AuthN[Authentication Layer\n+ Token Refresh]
-    AuthZ[Authorization Layer\n+ Role/Claim Checks]
-    OAuth[OAuth2 / OpenID Connect\n(optional bei externen APIs)]
+    AuthN[Authentication Layer<br>+ Token Refresh]
+    AuthZ[Authorization Layer<br>+ Role/Claim Checks]
+    OAuth[OAuth2 / OpenID Connect<br>(optional bei externen APIs)]
 end
 Gateway --> AuthN --> AuthZ
 AuthN --> OAuth
@@ -136,7 +137,6 @@ subgraph CI_CD [CI/CD + Testing (optional bei größerem Team)]
     BlueGreen[Blue/Green or Canary Deployment (optional)]
 end
 Pipeline --> Staging --> BlueGreen
-
 
 
 Description
