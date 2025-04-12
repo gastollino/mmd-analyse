@@ -93,7 +93,7 @@ flowchart TB
     %% ========= MONITORING =========
     subgraph Monitoring
         LogService["Logging Service (z.B. ELK)"]
-        Alerts[Alerting (z.B. Prometheus)]
+        Alerts["Alerting (z.B. Prometheus)"]
     end
     S3 --> LogService
     S4 --> LogService
